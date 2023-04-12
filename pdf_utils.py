@@ -24,9 +24,10 @@ def create_transformation_for_page(page, position):
 
     raise UnexpectedPositionException
 
-def generate_composite_pdf(input_files, output_file):
-    if not isinstance(input_files, list):
-        input_files = [input_files]
+def generate_composite_pdf(input_files):
+    if len(input_files) == 0:
+        print("No input files chosen")
+        return
 
     writer = PdfWriter()
     out_page = None
@@ -50,5 +51,8 @@ def generate_composite_pdf(input_files, output_file):
             create_transformation_for_page(page, pos % 4),
         )
 
+    return writer
+
+def save_pdf(pdf_writer, output_file):
     with open(output_file, "wb") as output_handle:
-        writer.write(output_handle)
+        pdf_writer.write(output_handle)
