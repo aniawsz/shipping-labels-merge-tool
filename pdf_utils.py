@@ -2,8 +2,8 @@ from pypdf import PaperSize, PdfReader, PdfWriter, Transformation
 
 class Position:
     upper_left  = 0
-    upper_right = 1
-    lower_left  = 2
+    lower_left  = 1
+    upper_right = 2
     lower_right = 3
 
 class UnexpectedPositionException(Exception):
