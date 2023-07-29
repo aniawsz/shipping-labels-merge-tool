@@ -1,86 +1,88 @@
 import os.path
-import tkinter as tk
-
-from tkinter import filedialog
-from functools import partial
+import wx
 
 from pdf_utils import generate_composite_pdf, save_pdf
 
-class GuiApp:
-    def __init__(self, window, *a, **kw):
-        super().__init__(*a, **kw)
-        self._window = window
+class MainFrame(wx.Frame):
+    def __init__(self, *a, **kw):
+        self._selected_files = []
+        self._filetype_wildcard = "PDF (*.pdf)|*.pdf"
 
-        self._window.title("PDF Merge Tool")
-        self._window.geometry("400x400")
-        self._window.config(bg="#ffffff")
-        self._window.resizable(0,0)
-
+        super().__init__(
+            parent=None,
+            title="PDF Merge Tool",
+            size=wx.Size(400,400),
+            style=wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN,
+        )
         self._create_widgets()
 
-        self._selected_files = []
+        self.Show()
 
-        self._allowed_filetypes = (
-            ("PDF", "*.pdf"),
-        )
+    def _select_files(self, *a):
+        with wx.FileDialog(
+            self,
+            "Select files",
+            wildcard=self._filetype_wildcard,
+            style=wx.FD_OPEN | wx.FD_MULTIPLE,
+        ) as file_dialog:
+            if file_dialog.ShowModal() == wx.ID_CANCEL:
+                return
 
+            self._selected_files = file_dialog.GetPaths()
 
-    def _select_files(self):
-        self._selected_files = filedialog.askopenfilenames(
-            title="Select files",
-            filetypes=self._allowed_filetypes,
-            multiple=True,
-            parent=self._window,
-        )
+            filenames = [os.path.split(path)[1] for path in self._selected_files]
+            self._filename_label.SetValue(
+                "\n".join([f"{i+1}. {fname}" for i, fname in enumerate(filenames)]),
+            )
+            self._generated_info.SetLabel("")
 
-        if not self._selected_files:
-            self._selected_files = []
-
-        self._filename_label.delete(1.0, tk.END)
-
-        filenames = [os.path.split(path)[1] for path in self._selected_files]
-        self._filename_label.insert(
-            tk.END,
-            "\n".join([f"{i+1}. {fname}" for i, fname in enumerate(filenames)]),
-        )
-
-    def _generate(self):
+    def _generate(self, *a):
         composite_pdf = generate_composite_pdf(self._selected_files)
 
-        output_file = filedialog.asksaveasfilename(
-            title="Save as",
-            filetypes=self._allowed_filetypes,
-            initialfile = "ShippingLabels.pdf",
-            defaultextension=".pdf",
-            parent=self._window,
-        )
+        with wx.FileDialog(
+            self,
+            "Save as",
+            defaultFile="ShippingLabels.pdf",
+            wildcard=self._filetype_wildcard,
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+        ) as file_dialog:
+            if file_dialog.ShowModal() == wx.ID_CANCEL:
+                return
 
-        save_pdf(composite_pdf, output_file)
+            output_filepath = file_dialog.GetPath()
+            try:
+                save_pdf(composite_pdf, output_filepath)
+            finally:
+                output_filename = os.path.split(output_filepath)[1]
+                self._generated_info.SetLabel(
+                    f"Saved the combined labels as {output_filename}"
+                )
 
     def _create_widgets(self):
-        open_button = tk.Button(
-            self._window,
-            text="Select Files with Shipping Labels",
-            command=self._select_files,
-            bg="white",
-        )
-        open_button.pack(expand=True)
+        panel = wx.Panel(self)
+        vsizer = wx.BoxSizer(wx.VERTICAL)
 
-        self._filename_label = tk.Text(self._window, height=10, width=50)
-        self._filename_label.delete(1.0, tk.END)
-        self._filename_label.pack(expand=True)
+        open_button = wx.Button(panel, label="Select Files with Shipping Labels")
+        open_button.Bind(wx.EVT_BUTTON, self._select_files)
+        vsizer.Add(open_button, 0, wx.ALL | wx.CENTER, 5)
 
-        generate_button = tk.Button(
-            self._window,
-            text="Generate",
-            command=self._generate,
-            bg="white",
+        self._filename_label = wx.TextCtrl(
+            panel,
+            size=wx.Size(50, 20),
+            style=wx.TE_READONLY | wx.TE_MULTILINE,
         )
-        generate_button.pack(expand=True)
+        vsizer.Add(self._filename_label, 0, wx.ALL | wx.EXPAND | wx.SHAPED, 5)
+
+        generate_button = wx.Button(panel, label="Generate")
+        generate_button.Bind(wx.EVT_BUTTON, self._generate)
+        vsizer.Add(generate_button, 0, wx.ALL | wx.CENTER, 5)
+
+        self._generated_info = wx.StaticText(panel)
+        vsizer.Add(self._generated_info, 0, wx.ALL | wx.EXPAND, 5)
+
+        panel.SetSizer(vsizer)
 
 def run_gui():
-    window = tk.Tk()
-    app = GuiApp(window)
-
-    window.attributes("-topmost", True)
-    window.mainloop()
+    app = wx.App()
+    frame = MainFrame()
+    app.MainLoop()
