@@ -124,10 +124,12 @@ class MainFrame(wx.Frame):
             self._generated_info.SetLabel("")
 
     def _generate(self, *a):
-        composite_pdf = generate_composite_pdf(
-            self._selected_files,
-            self._position_chooser.available_positions,
-        )
+        available_positions = self._position_chooser.available_positions
+        if len(available_positions) < 1:
+            self._generated_info.SetLabel("Choose at least one position")
+            return
+
+        composite_pdf = generate_composite_pdf(self._selected_files, available_positions)
 
         with wx.FileDialog(
             self,
@@ -137,6 +139,7 @@ class MainFrame(wx.Frame):
             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
         ) as file_dialog:
             if file_dialog.ShowModal() == wx.ID_CANCEL:
+                self._generated_info.SetLabel("")
                 return
 
             output_filepath = file_dialog.GetPath()
