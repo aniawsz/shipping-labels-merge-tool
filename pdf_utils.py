@@ -24,7 +24,7 @@ def create_transformation_for_page(page, position):
 
     raise UnexpectedPositionException
 
-def generate_composite_pdf(input_files):
+def generate_composite_pdf(input_files, available_positions):
     if len(input_files) == 0:
         print("No input files chosen")
         return
@@ -32,8 +32,10 @@ def generate_composite_pdf(input_files):
     writer = PdfWriter()
     out_page = None
 
-    for pos, file in enumerate(input_files):
-        if pos % 4 == 0 or out_page is None:
+    no_available_positions = len(available_positions)
+
+    for ix, file in enumerate(input_files):
+        if ix % no_available_positions == 0 or out_page is None:
             out_page = writer.add_blank_page(
                 width  = PaperSize.A4.width,
                 height = PaperSize.A4.height,
@@ -48,7 +50,10 @@ def generate_composite_pdf(input_files):
 
         out_page.merge_transformed_page(
             page,
-            create_transformation_for_page(page, pos % 4),
+            create_transformation_for_page(
+                page,
+                available_positions[ix % no_available_positions],
+            ),
         )
 
     return writer
